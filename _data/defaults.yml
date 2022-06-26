@@ -1,5 +1,4 @@
 home:
-  heading: "원준의 개발노트에 오신 것을 환영합니다 :)"
-  subheading: "제가 개발하면서 배운 것들, 공부한 것들을 적어놓은 공간이에요. \n
-  구글과 네이버를 통해서 소중한 지식들을 나눔해준 많은 분들의 블로그들을 보며 한참 부족한 실력이지만 저도 누군가에게 도움이 되고자, 그리고 미래의 저에게도 어떤 뿌듯함을 남기고자 만들었습니다."
+  heading: "원준의 개발노트 :)"
+  subheading: "My library about Web Development, Programming, IT info., etc."
   banner: "Your image url"

@@ -1,0 +1,215 @@
+I"9:<h2 id="구글-클라우드-가입과-프로젝트-생성">구글 클라우드 가입과 프로젝트 생성</h2>
+
+<p>구글 클라우드 계정이 없다면 신규 가입한다.</p>
+
+<p>아마 일반적인 인터넷 유저, 또는 안드로이드 유저라면 구글 계정 하나씩은 있을텐데 이 경우는 로그인 후 구글 클라우드 서비스를 사용하도록 약간의 설정만 하면 된다.</p>
+
+<p><a href="https://console.cloud.google.com/welcome?project=wonjune-gke-20220622"></a></p>
+
+<p>가입 후엔 프로젝트를 생성한다. 구글 클라우드에서 생성되는 가상머신, 사용자, 스토리지와 각종 솔루션들은 논리적으로 하나의 프로젝트에 속하게 된다. 상단의 ‘Google Cloud’ 로고의 오른쪽에 보이는 것이 바로 현재 지정된 프로젝트다.</p>
+
+<p><img src="/assets/images/2022-06-26/Untitled.png" alt="Untitled" /></p>
+
+<p>처음 접속하면 만들어진 프로젝트가 없기 때문에 ‘프로젝트 선택’ 이라는 버튼이 보일 텐데 이것을 클릭 후에 팝업에서 ‘새 프로젝트’ 를 생성한다.</p>
+
+<p>여기서부터는 과금 체계가 적용되기 때문에 첫 프로젝트를 만들때 결제정보를 입력해야 한다. 본인의 구글 계정의 구글페이를 연동하거나 결제용 신용카드를 등록하며, 신규 사용자는 이 과정 후 무료 크레딧이 지급되므로 3개월 간 과금을 걱정하지 않아도 된다.</p>
+
+<p><img src="/assets/images/2022-06-26/Untitled%201.png" alt="3개월 간의 클라우드 자유이용권" /></p>
+
+<p>3개월 간의 클라우드 자유이용권</p>
+
+<p><img src="/assets/images/2022-06-26/%E1%84%89%E1%85%B3%E1%84%8F%E1%85%B3%E1%84%85%E1%85%B5%E1%86%AB%E1%84%89%E1%85%A3%E1%86%BA_2022-06-24_%E1%84%8B%E1%85%A9%E1%84%8C%E1%85%A5%E1%86%AB_12.01.12.png" alt="스크린샷 2022-06-24 오전 12.01.12.png" /></p>
+
+<p>과금에 관련된 정보는 이 ‘결제’ 매뉴에서 조회할 수 있다.</p>
+
+<p>프로젝트 제목을 입력 한 후, 프로젝트를 생성한다.</p>
+
+<h2 id="가상머신-인스턴스-생성">가상머신 인스턴스 생성</h2>
+
+<p>클라우드 서비스를 사용하는 이유가 가용성, 안정성 등의 이유가 가장 크겠지만, 개발자의 입장에서는 필요한 환경을 쉽고 빠르게 만들 수 있다는 점이 가장 먼저 다가오게 되다. VM 인스턴스도 클릭과 키보드 입력 몇번으로 뚝딱 만들 수 있다.</p>
+
+<p>햄버거 매뉴에서 ‘Compute Engine’ &gt; ‘VM 인스턴스’ 매뉴로 이동하면 현재 생성되어 있는 가상머신 리스트를 조회하고 관리할 수 있다. ‘Compute Engine API 사용’ 버튼을 클릭하면 ‘VM 인스턴스’ 매뉴가 보이게 된다.</p>
+
+<p><img src="/assets/images/2022-06-26/Untitled%202.png" alt="Untitled" /></p>
+
+<p>‘인스턴스 만들기’ 를 눌러 가상머신을 생성하자. 여기서부터는 설정할 것들이 많아지는데, 여기서는 단순히 아파치 서버를 띄우기만 할 것이므로 다른 것들은 건들 필요 없다.</p>
+
+<ol>
+  <li>인스턴스 이름 입력</li>
+  <li>부팅 디스크
+    <ol>
+      <li>운영체제 : Ubuntu</li>
+      <li>버전 : Ubuntu 20.04 LTS</li>
+      <li>
+        <p>부팅디스크 유형과 크기 : 표준 영구 디스크, 100 GB</p>
+
+        <p><img src="/assets/images/2022-06-26/Untitled%203.png" alt="Untitled" /></p>
+      </li>
+    </ol>
+  </li>
+  <li>
+    <p>방화벽 : ‘HTTP 트래픽 허용’ 체크 → 아파치 서버를 생성 후에 외부에서 접속할 수 있도록 80 포트를 오픈한다.</p>
+
+    <p><img src="/assets/images/2022-06-26/Untitled%204.png" alt="Untitled" /></p>
+  </li>
+</ol>
+
+<p>‘만들기’ 버튼을 누르고 조금 기다리면 가상머신이 생성된다. ‘외부IP’ 항목은 나중에 서버를 생성한 후에 브라우저에서 접속할 주소이므로 기억해둔다.</p>
+
+<p><img src="/assets/images/2022-06-26/%E1%84%89%E1%85%B3%E1%84%8F%E1%85%B3%E1%84%85%E1%85%B5%E1%86%AB%E1%84%89%E1%85%A3%E1%86%BA_2022-06-26_%E1%84%8B%E1%85%A9%E1%84%8C%E1%85%A5%E1%86%AB_1.00.51.png" alt="스크린샷 2022-06-26 오전 1.00.51.png" /></p>
+
+<p>가상머신 우측의 SSH 버튼을 누르면 콘솔로 접속이 가능하다.</p>
+
+<p><img src="/assets/images/2022-06-26/Untitled%205.png" alt="2022-06-26/Untitled%205.png" /></p>
+
+<h2 id="도커-설치">도커 설치</h2>
+
+<p>apt 를 사용하여 도커를 설치한다. 가상머신을 생성할 때 운영체제를 우분투가 아닌 다른 것으로 선택하였다면 yum 등 다른 방법을 찾아야 한다.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo</span> <span class="nt">-i</span> <span class="c"># 관리자 권한으로 전환</span>
+apt update : <span class="c"># APT 패키지 업데이트를 수행</span>
+apt <span class="nb">install </span>docker.io <span class="nt">-y</span> <span class="c"># docker 설치</span>
+</code></pre></div></div>
+
+<p>-y 옵션은 이후에 확인 차 물어보는 메시지에서 자동으로 yes 를 답변하도록 해준다.</p>
+
+<p>수많은 로그가 올라간 끝에 설치가 완료되었다면 정상적으로 설치되었는지 확인한다. 아래 명령을 수행했을 때 클라이언트와 서버에 대한 정보가 출력되면 정상적으로 설치 된 것이다.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>docker info
+
+<span class="c"># 결과</span>
+Client:
+ Context:    default
+ Debug Mode: <span class="nb">false</span>
+<span class="c"># ...(중략)</span>
+Insecure Registries:
+  127.0.0.0/8
+ Live Restore Enabled: <span class="nb">false</span>
+</code></pre></div></div>
+
+<p><img src="2022-06-26/Untitled%206.png" alt="Untitled" /></p>
+
+<h2 id="웹서버-컨테이너의-생성과-구동">웹서버 컨테이너의 생성과 구동</h2>
+
+<p>도커가 설치되었으니 이제 웹서버를 구동시키기 위해 이미지를 가져와서 컨테이너를 생성한다. 톰캣 서버를 만들어 보도록 하자.</p>
+
+<h3 id="이미지-검색하기">이미지 검색하기</h3>
+
+<p>이미지 검색은 두가지 방법으로 할 수 있다.</p>
+
+<ol>
+  <li>
+    <p>SSH 창에서 CLI 명령어로 검색</p>
+
+    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code> docker search tomcat <span class="c"># tomcat 키워드로 검색</span>
+</code></pre></div>    </div>
+  </li>
+  <li>
+    <p><a href="[hub.docker.com](http://hub.docker.com)">도커 허브</a> 웹 페이지에서 검색</p>
+
+    <p><img src="2022-06-26/Untitled%207.png" alt="2022-06-26/Untitled%207.png" /></p>
+  </li>
+</ol>
+
+<aside>
+💡 *검색해보면 알 수 있지만, tomcat 으로 검색하면 엄청나게 많은 이미지들이 검색된다. 이 중 오픈소스 Apache Tomcat 은 ‘tomcat’ 이라는 이름을 가진 이미지 하나뿐이며, 위의 그림과 같이 ‘DOCKER OFFICIAL IMAGE’ 라는 태그가 붙는다. 나머지는 여러 회사/조직/개인이 생성해서 올린 별도의 이미지들이다. Apache Tomcat 에 어떤 페이지를 올렸거나 특정 목적을 위해 수정이 가해진 이미지들일 것이고, 어떤 이미지는 심지어 이름만 다를 뿐 원래 Apache Tomcat 과 동일하거나, 어쩌면 Apache Tomcat 과는 전혀 다른 이미지일 수도 있다. 따라서 알려지지 않은 개인의 이미지를 함부로 가저다 사용하는 것은 주의해야 한다.*
+
+</aside>
+
+<p>기본 tomcat 이미지를 가져다 써도 되지만 여기서는 consol/tomcat-7.0 이라는 이름의 이미지를 사용해본다.</p>
+
+<h3 id="이미지-다운로드">이미지 다운로드</h3>
+
+<p>우선 이미지 경로에 대해서 정리가 필요하다. 다운받고자 하는 이미지의 정식 명칭은 <a href="http://docker.io/consol/tomcat-7.0:latest">docker.io/consol/tomcat-7.0:latest</a> 이다.</p>
+
+<p>“docker.io” 부분은 저장소의 도메인 정보이다. docker.io 는 도커 허브(http://hub.docker.com)를 말하는 것이며, 도커 클라이언트의 기본 저장소로 지정되어 있기 때문에 생략해도 문제가 없는 것이다. 만일 기업이나 조직, 또는 개인이 자체 도커 레지스트리를 운영하고 그 곳에 등록한 이미지를 사용한다면 레지스트리명이 앞에 붙어야 한다.</p>
+
+<p>“consol” 부분은 네임스페이스라고 하는데, 도커 허브에서는 이미지를 등록한 계정명과 동일하다. consol/tomcat-7.0 이라고 한다면 도커허브의 consol 이라는 계정이 등록한 tomcat-7.0 이라는 이미지가 되는 것이다. 이 네임스페이스는 도커허브의 공식 이미지인 경우 생략될 수 있다. 위의 도커허브 웹페이지 이미지에서 DOCKER OFFICIAL IMAGE라고 표시된 tomcat 에 네임스페이스가 없는 것이 그 이유이다.</p>
+
+<p>“:latest” 부분은 이미지의 tag 라고 부르는데 일종의 버전이라고 생각하면 된다. 물론 태그라는 이름으로 알 수 있듯이 일반적으로 생각하는 버전과는 좀 개념이 다르다. 이미지는 여러 다른 이미지를 기반으로 생성되는 레이어 구조이기 때문에 이 이미지의 기반이 되는, 혹은 이 이미지에서 사용되는 여러 이미지들이 존재하는데 이 것을 ‘태깅되었다’라고 한다. 도커 허브의 consol/tomcat-7.0 이미지의 <a href="https://hub.docker.com/r/consol/tomcat-7.0/tags">태그 탭</a>을 보면 이 이미지에 태깅된 다른 이미지의 목록을 확인할 수 있다.</p>
+
+<p><img src="2022-06-26/Untitled%208.png" alt="Untitled" /></p>
+
+<p>아무튼 docker hub 에 올라가 있는 이미지를 다운로드하기 위해서는 아래 명령을 수행하면 된다. 가상머신 SSH 콘솔에서 입력하여 이미지를 다운로드 한다.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>docker pull consol/tomcat-7.0:latest <span class="c"># docker hub 이미지 다운로드</span>
+</code></pre></div></div>
+
+<p>아래와 같이 다운로드된 이미지를 조회할 수 있다.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>docker images
+<span class="c"># 또는</span>
+docker image <span class="nb">ls</span>
+
+<span class="c"># 결과</span>
+REPOSITORY          TAG       IMAGE ID       CREATED       SIZE
+consol/tomcat-7.0   latest    7c34bafd1150   7 years ago   601MB
+</code></pre></div></div>
+
+<h3 id="이미지를-사용하여-컨테이너-실행">이미지를 사용하여 컨테이너 실행</h3>
+
+<p>앞서 다운로드 받은 이미지를 가지고 컨테이너를 생성하고 이를 구동시킨다.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>docker run <span class="nt">-d</span> <span class="nt">-p</span> 80:8080 tc consol/tomcat-7.0
+</code></pre></div></div>
+
+<p>이 명령어의 각 부분을 간단히 보면,</p>
+
+<ul>
+  <li>run : 이미지로 부터 컨테이너를 생성 후 수행시키는 명령이다. 원래 컨테이너를 생성하는 create, 컨테이너를 실행하는 start 명령이 따로 있지만 run 은 이 두가지를 동시에 실행한다.</li>
+  <li>-d : daemon, 컨테이너가 백그라운드에서 실행 되도록 하는 옵션이다.</li>
+  <li>-p : publish 또는 port forward, 생성한 컨테이너의 8080포트를 호스트의 80 포트로 노출시킨다.</li>
+  <li>tc : 컨테이너의 이름</li>
+  <li>consol/tomcat-7.0 : 이미지의 이름</li>
+</ul>
+
+<p>정상적으로 생성되었는지 아래 명령으로 확인한다.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>docker container <span class="nb">ls</span> <span class="nt">-a</span>
+
+<span class="c"># 결과</span>
+CONTAINER ID   IMAGE               COMMAND                  CREATED         STATUS         PORTS                                             NAMES
+59318a17c036   consol/tomcat-7.0   <span class="s2">"/bin/sh -c /opt/tom…"</span>   9 minutes ago   Up 9 minutes   8778/tcp, 0.0.0.0:80-&gt;8080/tcp, :::80-&gt;8080/tcp   tc
+</code></pre></div></div>
+
+<p>현재 실행 중인 컨테이너 목록은 아래 명령으로 조회한다.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>docker ps
+</code></pre></div></div>
+
+<p>웹 브라우저를 열고 가상머신의 외부ip주소로 접속하여 톰캣 서버 디폴트 페이지가 출력되는지 확인한다. 톰캣의 서비스 포트인 8080 을 80 포트로 포워딩해놨으므로 주소창에 별도로 포트번호를 입력하진 않는다.</p>
+
+<p><img src="2022-06-26/Untitled%209.png" alt="Untitled" /></p>
+
+<p>이미지의 서비스포트는 보통 도커허브의 이미지 페이지에 설명되어 있거나, 이미지의 manifest 파일 내용을 조회하는 docker inspect 명령을 수행 한 후 exposedport 속성값으로도 확인할 수 있다. 주의할 점은 manifest 파일의 내용은 자동으로 생성되는 것이 아니라 이미지 생성자가 입력하는 내용이므로 실제 서비스되는 포트라도 여기에 적혀 있지 않거나 적혀 있어도 서비스 되지 않는 포트일 수도 있다는 것이다. 참고용으로 알아두자.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>docker inspect consol/tomcat-7.0
+
+<span class="c"># 결과</span>
+<span class="c"># ... (전략)</span>
+<span class="s2">"ExposedPorts"</span>: <span class="o">{</span>
+                <span class="s2">"8080/tcp"</span>: <span class="o">{}</span>,
+                <span class="s2">"8778/tcp"</span>: <span class="o">{}</span>
+            <span class="o">}</span>,
+<span class="c"># ... (후략)</span>
+</code></pre></div></div>
+
+<h2 id="정리하기">정리하기</h2>
+
+<p>이미지를 받고 컨테이너를 생성하고 수행하는 방법을 알았으니, 그 반대도 알아야 한다.</p>
+
+<p>실행중인 컨테이너는 아래 명령으로 중단한다.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>docker stop tc
+</code></pre></div></div>
+
+<p>컨테이너는 삭제는 아래 명령을 수행하면 된다.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>docker <span class="nb">rm </span>tc
+</code></pre></div></div>
+
+<p>다운로드 받았던 이미지는 아래 명령으로 삭제한다.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>docker rmi consol/tomcat-7.0
+</code></pre></div></div>
+:ET
