@@ -1,0 +1,471 @@
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.2.2">Jekyll</generator><link href="/jekyll-theme-yat/feed.xml" rel="self" type="application/atom+xml" /><link href="/jekyll-theme-yat/" rel="alternate" type="text/html" /><updated>2022-07-17T01:58:47+09:00</updated><id>/jekyll-theme-yat/feed.xml</id><title type="html">Wonjune’s DevNote</title><subtitle>부족함 없는 개발자가 되기 위한 정진의 기록들 행여나 잊어버릴까 남겨놓는 끄적거림들이 꼭 필요한 순간을 위해 남겨진 곳</subtitle><author><name>Wonjune Lee</name></author><entry><title type="html">AWS VPC와 서브넷 구성</title><link href="/jekyll-theme-yat/%ED%81%B4%EB%9D%BC%EC%9A%B0%EB%93%9C/2022/07/17/AWS-VPC%EC%99%80-%EC%84%9C%EB%B8%8C%EB%84%B7-%EA%B5%AC%EC%84%B1.html" rel="alternate" type="text/html" title="AWS VPC와 서브넷 구성" /><published>2022-07-17T00:00:00+09:00</published><updated>2022-07-17T00:00:00+09:00</updated><id>/jekyll-theme-yat/%ED%81%B4%EB%9D%BC%EC%9A%B0%EB%93%9C/2022/07/17/AWS-VPC%EC%99%80-%EC%84%9C%EB%B8%8C%EB%84%B7-%EA%B5%AC%EC%84%B1</id><content type="html" xml:base="/jekyll-theme-yat/%ED%81%B4%EB%9D%BC%EC%9A%B0%EB%93%9C/2022/07/17/AWS-VPC%EC%99%80-%EC%84%9C%EB%B8%8C%EB%84%B7-%EA%B5%AC%EC%84%B1.html"><![CDATA[<p>클라우드 연구회의 목적은 사무실 회의 예약 서비스를 만들고 이를 도커 이미지로 생성한 후에 AWS에서 쿠버네티스 클러스터를 구성하고, 고가용성과 안정성이 보장되는 서비스로 구축하는 것이다. 현재는 AWS에서 K8S 클러스터 환경이 만들어질 네트워크 구조를 설계하고 구성하는 작업을 수행하고 있다. 퍼블릭으로 오픈되는 마스터 1대와 프라이빗의 워커 2대로 구성되는 쿠버네티스 클러스터, 여기에 도커 개발용 인스턴스까지 추가하는 과정에서 배운 것들을 바탕으로 여기서는 가장 기초적인 형태를 만드는 내용만 정리해본다.</p>
+
+<p>우선 전체적인 네트워크의 구성도는 아래와 같다.</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled.png" alt="Untitled" /></p>
+
+<h2 id="vpc-생성">VPC 생성</h2>
+
+<p>VPC(Virtual Private Cloud)는 AWS 클라우드에서 생성되는 모든 리소스가 올라가는 바탕이 되는 가상 네트워크 공간이다. 특정 단일 리전에 종속되지만 이 리전 내의 여러 가용영역에 걸쳐서 존재할 수 있다. 최소 16비트의 사이더블록을 가진 CIDR 주소를 가진다.</p>
+
+<p>가격이 저렴하다는 이유로 오레곤 리전을 선택했는데, 실제 서비스 시에 서울 리전에 비해서 속도 이슈가 있을지는 지켜봐야 할 것 같다. 10.0.0.0/16 주소를 할당하자.</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled%201.png" alt="Untitled" /></p>
+
+<h2 id="퍼블릭-서브넷-생성">퍼블릭 서브넷 생성</h2>
+
+<p>서브넷은 VPC 아래에 존재하는 논리적인 서브 네트워크이다. 최소 24비트 블록을 가지는 CIDR 주소를 가진다. VPC 가 속한 리전의 특정 가용영역(AZ)에 종속된다. 외부에서 서브넷 내부로 엑세스가 가능한가에 따라 퍼블릭 서브넷과 프라이빗 서브넷으로 분류할 수 있다.</p>
+
+<p>퍼블릭 서브넷은 라우팅 테이블에 외부 인터넷과 연결되는 인터넷 게이트웨이 연결주소가 라우트되며 구성요소(EC2 등)는 퍼블릭IP 주소(혹은 탄력적IP 주소)가 할당되어 외부에서 접속이 가능하다.</p>
+
+<p>VPC ID는 위에서 생성한 VPC 로 지정해주고 CIDR 주소는 10.0.0.0/24 로 지정한다. 가용영역은 특별히 지정해주지 않으면 자동으로 할당되지만 어떤 것으로 할당되었는지는 기억해둔다.</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled%202.png" alt="Untitled" /></p>
+
+<h2 id="인터넷-게이트웨이-생성">인터넷 게이트웨이 생성</h2>
+
+<p>생성한 서브넷이 퍼블릭 서브넷으로서 기능하려면 인터넷게이트웨이를 통해 외부로 오픈되어야 한다. 인터넷게이트웨이는 VPC에 종속된다.</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled%203.png" alt="Untitled" /></p>
+
+<p>게이트웨이를 생성한 후에 위에서 생성한 VPC에 연결해준다.</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled%204.png" alt="Untitled" /></p>
+
+<h2 id="라우팅-테이블-생성-및-연결">라우팅 테이블 생성 및 연결</h2>
+
+<p>퍼블릭 서브넷에서 사용할 라우팅테이블을 생성하고 외부 인터넷으로 접속할 수 있도록 0.0.0.0/0 주소로 인터넷 게이트웨이를 라우팅한다.</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled%205.png" alt="Untitled" /></p>
+
+<p>라우팅테이블을 public subnet 에 연결</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled%206.png" alt="Untitled" /></p>
+
+<p>외부인터넷 통신이 가능하도록 디폴트 스태틱 라우팅 추가하고 인터넷 게이트웨이를 연결</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled%207.png" alt="Untitled" /></p>
+
+<h2 id="퍼블릭-ec2-생성">퍼블릭 EC2 생성</h2>
+
+<p>퍼블릭 서브넷안에 EC2 인스턴스를 생성한다. 이 인스턴스가 이 후 생성될 네트워크 구성요소로 접근하기 위한 관문 역할을 수행할 것이다. VPC와 서브넷을 잘 지정해준다. ‘퍼블릭 IP 자동 할당’ 을 ‘활성화’로 해주면 퍼블릭 IP 가 할당되게 되는데, 외부로 서비스되기 위해서는 일관된 IP주소(기본으로 할당되는 퍼블릭IP는 인스턴스가 재시작되거나 하면 다른 주소로 바뀐다)를 가지는 것이 좋으므로 이후에 탄력적 IP(Elastic IP) 를 생성해서 할당할 예정이다. 따라서 여기서는 별도의 퍼블릭 IP는 할당받지 않도록 한다.</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled%208.png" alt="Untitled" /></p>
+
+<h2 id="탄력적-ip-생성-후-퍼블릭-ec2-에-연결">탄력적 IP 생성 후 퍼블릭 EC2 에 연결</h2>
+
+<p>탄력적 IP(Elastic IP)를 생성 후에 퍼블릭 EC2 인스턴스에 연결해준다.</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled%209.png" alt="Untitled" /></p>
+
+<h2 id="접속테스트">접속테스트</h2>
+
+<p>이제 생성한 인스턴스가 인터넷으로 잘 붙는지 확인해볼 차례이다. 우선 터미널로 SSH 접속을 한다. EC2 인스턴스 생성 시 디폴트 설정을 따랐다면 보안그룹에 22번 포트가 등록되어 있을 것이고 키페어를 할당 받았을 것이다.</p>
+
+<p>미리 생성해둔 keypair 파일에 읽기/쓰기 권한을 추가하자.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">chmod </span>600 dxgo-k8s-mrs.pem
+</code></pre></div></div>
+
+<p>OpenSSH 를 이용하여 접속한다. 탄력적IP 주소로 붙으며 인스턴스 생성시 AMI를 우분투로 지정해서 디폴트 계정은 ubuntu 이다.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ssh <span class="nt">-i</span> <span class="s2">"dxgo-k8s-mrs.pem"</span> ubuntu@52.34.103.119
+</code></pre></div></div>
+
+<p><img src="/assets/images/2022-07-17/Untitled%2010.png" alt="Untitled" /></p>
+
+<p><a href="http://google.com">google.com</a> 으로 ping 을 날려보면 잘 접속되는 것을 알 수 있다. 인터넷 게이트웨이는 잘 설정되었다.</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled%2011.png" alt="Untitled" /></p>
+
+<h2 id="프라이빗-서브넷-생성">프라이빗 서브넷 생성</h2>
+
+<p>프라이빗 서브넷은 외부로부터 차단된 서브넷이다. 따라서 이 서브넷 내부의 인스턴스는 외부에서 접속할 수 없고 오직 같은 VPC 내에서만 접근이 가능하다. 다만 프라이빗 서브넷의 인스턴스는 동일 VPC 내의 퍼블릭 서브넷에 구성된 NAT(Network Address Translation) 게이트웨이를 이용하면 인터넷으로 접속이 가능해진다. 이렇게 해도 여전히 외부에서 프라이빗 서브넷 내부로는 접근 할 수 없다.(외부에서 접근 할 수 있는 오픈된 IP 주소가 없기 때문) 따라서 보안이 중요한 데이터베이스나 백엔드 서버는 프라이빗 서브넷 내부에 둔다.</p>
+
+<p>서브넷의 생성은 퍼블릿 서브넷의 그것과 동일하게 수행한다. CIDR 주소는 10.0.1.0/24 로 지정한다.</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled%2012.png" alt="Untitled" /></p>
+
+<h2 id="퍼블릭서브넷에-nat게이트웨이-추가">퍼블릭서브넷에 NAT게이트웨이 추가</h2>
+
+<p>프라이빗 서브넷의 인스턴스도 필요한 라이브러리나 어플리케이션을 설치할 수 있도록 인터넷으로 접속할 수 있게 해야한다. 이를 위해 퍼블릭 서브넷에 NAT 게이트웨이를 만들어준다.</p>
+
+<p>연결 유형을 퍼블릭으로 하고 탄력적 IP를 하나 할당 받는다. 이래야 프라이빗 서브넷의 인스턴스가 인터넷으로 접속할 수 있다.</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled%2013.png" alt="Untitled" /></p>
+
+<p>VPC 내에 라우팅 테이블을 하나 생성하고, 프라이빗 서브넷을 연결해준다.</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled%2014.png" alt="Untitled" /></p>
+
+<p>라우팅에 NAT 게이트웨이로의 디폴트 라우팅을 추가해준다.</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled%2015.png" alt="Untitled" /></p>
+
+<h2 id="프라이빗-서브넷에-ec2-생성-후-테스트">프라이빗 서브넷에 EC2 생성 후 테스트</h2>
+
+<p>프라이빗 서브넷 내부에도 퍼블릭 때와 동일하게 EC2를 생성해준다. ‘퍼블릭 IP 자동 할당’ 은 서브넷 설정에 따라 ‘비활성화’로 세팅되는 것을 알 수 있다. 프라이빗 서브넷 내부의 인스턴스는 외부 인터넷에 오픈되지 않으므로 퍼블릭IP 를 가지지 않는다.</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled%2016.png" alt="Untitled" /></p>
+
+<p>프라이빗 서브넷은 외부에서 접속할 수 없다고 했으므로, 서브넷을 구축한 운영자도 SSH 를 통해 접속할 수 없다. 그럼 어떻게 해야할까? 위에서 프라이빗 서브넷의 인스턴스는 동일 VPC 내부에서만 접속 할 수 있다고 했다. 그리고 퍼블릭 EC2 인스턴스를 생성하면서 관문 역할을 수행할 것이라고도 했다. 즉, 퍼블릭 EC2 인스턴스를 통해서 접근을 해야한다.</p>
+
+<p>퍼블릭 서브넷의 인스턴스로 프라이빗 서브넷의 인스턴스로 SSH 접속을 하기 위해  키페어파일을 업로드하자. 리눅스의 경우는 scp 명령으로 파일을 보낼 수 있는데, FTP를 이용해도 된다.</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled%2017.png" alt="Untitled" /></p>
+
+<p>퍼블릭 EC2 로 SSH 접속 후에 다시 프라이빗 EC2 로 SSH 접속한다. 프라이빗 IP 주소로 접속하면 된다.</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled%2018.png" alt="Untitled" /></p>
+
+<p>프라이빗서브넷의 EC2에서 외부 인터넷 접속이 되는지 ping 테스트를 수행한다. 이제 NAT 게이트웨이 설정도 잘 된 것을 알 수 있다.</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled%2019.png" alt="Untitled" /></p>
+
+<h2 id="정리">정리</h2>
+
+<p>여기까지가 아주 기본적인 VPC 네트워크 구성 형태이다. 여기서 고가용성을 위해 다른 가용영역에 퍼블릭 또는 프라이빗 서브넷을 추가로 생성할 수도 있다.(앞에서 가용영역을 잘 기억해놓으라는 것이 이런 이유) 이런 경우에 로드밸런서나 오토 스케일링이 추가되어 트래픽을 분산시킬 수 있다. 이러한 내용들은 나중에 다시 정리해보기로 하겠다.</p>]]></content><author><name>Wonjune Lee</name></author><category term="클라우드" /><category term="AWS" /><category term="VPC" /><category term="Subnet" /><category term="EC2" /><category term="클라우드" /><summary type="html"><![CDATA[클라우드 연구회의 목적은 사무실 회의 예약 서비스를 만들고 이를 도커 이미지로 생성한 후에 AWS에서 쿠버네티스 클러스터를 구성하고, 고가용성과 안정성이 보장되는 서비스로 구축하는 것이다. 현재는 AWS에서 K8S 클러스터 환경이 만들어질 네트워크 구조를 설계하고 구성하는 작업을 수행하고 있다. 퍼블릭으로 오픈되는 마스터 1대와 프라이빗의 워커 2대로 구성되는 쿠버네티스 클러스터, 여기에 도커 개발용 인스턴스까지 추가하는 과정에서 배운 것들을 바탕으로 여기서는 가장 기초적인 형태를 만드는 내용만 정리해본다.]]></summary></entry><entry><title type="html">도커 명령어 정리</title><link href="/jekyll-theme-yat/docker/2022/06/27/%EB%8F%84%EC%BB%A4-%EB%AA%85%EB%A0%B9%EC%96%B4.html" rel="alternate" type="text/html" title="도커 명령어 정리" /><published>2022-06-27T00:00:00+09:00</published><updated>2022-06-27T00:00:00+09:00</updated><id>/jekyll-theme-yat/docker/2022/06/27/%EB%8F%84%EC%BB%A4-%EB%AA%85%EB%A0%B9%EC%96%B4</id><content type="html" xml:base="/jekyll-theme-yat/docker/2022/06/27/%EB%8F%84%EC%BB%A4-%EB%AA%85%EB%A0%B9%EC%96%B4.html"><![CDATA[<h2 id="도커-설치">도커 설치</h2>
+
+<h3 id="우분투-기준">우분투 기준</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sudo</span> <span class="nt">-i</span> <span class="c"># 관리자 권한으로 전환</span>
+apt update <span class="c"># apt 패키지 업데이트</span>
+apt <span class="nb">install </span>docker.io <span class="nt">-y</span> <span class="c"># docker 설치</span>
+<span class="c"># .... 설치완료 후</span>
+docker info <span class="c"># 설치 확인</span>
+</code></pre></div></div>
+
+<h2 id="이미지-관리">이미지 관리</h2>
+
+<h3 id="이미지-검색">이미지 검색</h3>
+
+<ol>
+  <li>
+    <p>CLI 명령으로 검색</p>
+
+    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code> docker search tomcat
+</code></pre></div>    </div>
+  </li>
+  <li>
+    <p>도커 허브 웹브라우저에서 검색</p>
+
+    <p><img src="/assets/images/2022-06-27/11.06.06.png" alt="스크린샷 2022-06-27 오후 11.06.06.png" /></p>
+  </li>
+</ol>
+
+<h3 id="이미지-다운로드">이미지 다운로드</h3>
+
+<ul>
+  <li><a href="http://docker.io">docker.io</a> 는 저장소의 도메인 정보이며 생략하면 docker.io 가 기본 도메인이 된다.</li>
+  <li>:latest 는 태그로 생략하면 latest 가 자동으로 붙는다. 주로 버전 명시할때 사용한다.</li>
+</ul>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>docker pull consol/tomcat-7.0 <span class="c"># consol/tomcat-7.0 이미지를 다운로드</span>
+</code></pre></div></div>
+
+<h3 id="호스트에-다운로드-된-이미지-확인">호스트에 다운로드 된 이미지 확인</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>docker images
+</code></pre></div></div>
+
+<h3 id="이미지-상세-정보-확인">이미지 상세 정보 확인</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>docker inspect console/tomcat-7.0
+</code></pre></div></div>
+
+<p>이미지의 상세정보(매니페스트 파일)를 출력하는데 꽤 중요한 정보가 많다. 외부로 노출되는 포트 정보는 중요하니 잘 봐두는 것이 좋다.</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># docker inspect consol/tomcat-7.0</span>
+<span class="pi">[</span>
+    <span class="pi">{</span>
+        <span class="c1"># 이미지 ID</span>
+        <span class="s2">"</span><span class="s">Id"</span><span class="pi">:</span> <span class="s2">"</span><span class="s">sha256:7c34bafd11507bff45ed89ae7b2d56da68abd6b0f373c5e2a90393057785cca6"</span><span class="pi">,</span>
+        <span class="s2">"</span><span class="s">RepoTags"</span><span class="pi">:</span> <span class="pi">[</span> <span class="c1"># 별칭</span>
+            <span class="s2">"</span><span class="s">consol/tomcat-7.0:latest"</span>
+        <span class="pi">],</span>
+        <span class="s2">"</span><span class="s">RepoDigests"</span><span class="pi">:</span> <span class="pi">[</span>
+            <span class="s2">"</span><span class="s">consol/tomcat-7.0@sha256:8256b5e8e01fc4f6c1913e1fd70dea95ae656400f70fb1c12157d0e89e1ccaf7"</span>
+        <span class="pi">],</span>
+        <span class="s2">"</span><span class="s">Parent"</span><span class="pi">:</span> <span class="s2">"</span><span class="s">"</span><span class="pi">,</span>
+        <span class="s2">"</span><span class="s">Comment"</span><span class="pi">:</span> <span class="s2">"</span><span class="s">"</span><span class="pi">,</span>
+        <span class="s2">"</span><span class="s">Created"</span><span class="pi">:</span> <span class="s2">"</span><span class="s">2015-06-06T05:54:45.287323113Z"</span><span class="pi">,</span> <span class="c1"># 만들어진 시각</span>
+        <span class="s2">"</span><span class="s">Container"</span><span class="pi">:</span> <span class="s2">"</span><span class="s">5544910d974f121a6630b9676fe3469ae3cf9656b7263eb05066f31a99fd32b0"</span><span class="pi">,</span>
+        <span class="s2">"</span><span class="s">ContainerConfig"</span><span class="pi">:</span> <span class="pi">{</span>
+            <span class="s2">"</span><span class="s">Hostname"</span><span class="pi">:</span> <span class="s2">"</span><span class="s">eadddbb61a32"</span><span class="pi">,</span>
+            <span class="s2">"</span><span class="s">Domainname"</span><span class="pi">:</span> <span class="s2">"</span><span class="s">"</span><span class="pi">,</span>
+            <span class="s2">"</span><span class="s">User"</span><span class="pi">:</span> <span class="s2">"</span><span class="s">"</span><span class="pi">,</span>
+            <span class="s2">"</span><span class="s">AttachStdin"</span><span class="pi">:</span> <span class="nv">false</span><span class="pi">,</span>
+            <span class="s2">"</span><span class="s">AttachStdout"</span><span class="pi">:</span> <span class="nv">false</span><span class="pi">,</span>
+            <span class="s2">"</span><span class="s">AttachStderr"</span><span class="pi">:</span> <span class="nv">false</span><span class="pi">,</span>
+            <span class="s2">"</span><span class="s">ExposedPorts"</span><span class="pi">:</span> <span class="pi">{</span> <span class="c1"># 외부로 노출할 포트를 다른 사람에 알려줄 목적 (필수는 아님)</span>
+                <span class="s2">"</span><span class="s">8080/tcp"</span><span class="pi">:</span> <span class="pi">{},</span>
+                <span class="s2">"</span><span class="s">8778/tcp"</span><span class="pi">:</span> <span class="pi">{}</span>
+            <span class="pi">},</span>
+            <span class="s2">"</span><span class="s">Tty"</span><span class="pi">:</span> <span class="nv">false</span><span class="pi">,</span>
+            <span class="s2">"</span><span class="s">OpenStdin"</span><span class="pi">:</span> <span class="nv">false</span><span class="pi">,</span>
+            <span class="s2">"</span><span class="s">StdinOnce"</span><span class="pi">:</span> <span class="nv">false</span><span class="pi">,</span>
+            <span class="s2">"</span><span class="s">Env"</span><span class="pi">:</span> <span class="pi">[</span> <span class="c1"># 환경 변수</span>
+                <span class="s2">"</span><span class="s">PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/tomcat/bin"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">LANG=C.UTF-8"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">JAVA_VERSION=7u79"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">JAVA_DEBIAN_VERSION=7u79-2.5.5-1~deb8u1"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">JOLOKIA_VERSION=1.3.1"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">TOMCAT_VERSION=7.0.62"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">DEPLOY_DIR=/maven"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">CATALINA_HOME=/opt/tomcat"</span>
+            <span class="pi">],</span>
+            <span class="s2">"</span><span class="s">Cmd"</span><span class="pi">:</span> <span class="pi">[</span> <span class="c1"># 실행할 프로세스 커맨드라인</span>
+                <span class="s2">"</span><span class="s">/bin/sh"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">-c"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">#(nop)</span><span class="nv"> </span><span class="s">CMD</span><span class="nv"> </span><span class="s">[</span><span class="se">\"</span><span class="s">/bin/sh</span><span class="se">\"</span><span class="nv"> </span><span class="se">\"</span><span class="s">-c</span><span class="se">\"</span><span class="nv"> </span><span class="se">\"</span><span class="s">/opt/tomcat/bin/deploy-and-run.sh</span><span class="se">\"</span><span class="s">]"</span>
+            <span class="pi">],</span>
+            <span class="s2">"</span><span class="s">Image"</span><span class="pi">:</span> <span class="s2">"</span><span class="s">bfc5f40a572ad8d95e5907efb341146879f13be8d1b224d4f6868d06a5220eb8"</span><span class="pi">,</span>
+            <span class="s2">"</span><span class="s">Volumes"</span><span class="pi">:</span> <span class="pi">{</span>
+                <span class="s2">"</span><span class="s">/opt/tomcat/logs"</span><span class="pi">:</span> <span class="pi">{},</span>
+                <span class="s2">"</span><span class="s">/opt/tomcat/temp"</span><span class="pi">:</span> <span class="pi">{},</span>
+                <span class="s2">"</span><span class="s">/opt/tomcat/work"</span><span class="pi">:</span> <span class="pi">{},</span>
+                <span class="s2">"</span><span class="s">/tmp/hsperfdata_root"</span><span class="pi">:</span> <span class="pi">{}</span>
+            <span class="pi">},</span>
+            <span class="s2">"</span><span class="s">WorkingDir"</span><span class="pi">:</span> <span class="s2">"</span><span class="s">"</span><span class="pi">,</span>
+            <span class="s2">"</span><span class="s">Entrypoint"</span><span class="pi">:</span> <span class="nv">null</span><span class="pi">,</span>
+            <span class="s2">"</span><span class="s">OnBuild"</span><span class="pi">:</span> <span class="pi">[],</span>
+            <span class="s2">"</span><span class="s">Labels"</span><span class="pi">:</span> <span class="pi">{}</span>
+        <span class="pi">},</span>
+        <span class="s2">"</span><span class="s">DockerVersion"</span><span class="pi">:</span> <span class="s2">"</span><span class="s">1.6.1-rc2"</span><span class="pi">,</span>
+        <span class="s2">"</span><span class="s">Author"</span><span class="pi">:</span> <span class="s2">"</span><span class="s">roland@jolokia.org"</span><span class="pi">,</span>
+        <span class="s2">"</span><span class="s">Config"</span><span class="pi">:</span> <span class="pi">{</span>
+            <span class="s2">"</span><span class="s">Hostname"</span><span class="pi">:</span> <span class="s2">"</span><span class="s">eadddbb61a32"</span><span class="pi">,</span>
+            <span class="s2">"</span><span class="s">Domainname"</span><span class="pi">:</span> <span class="s2">"</span><span class="s">"</span><span class="pi">,</span>
+            <span class="s2">"</span><span class="s">User"</span><span class="pi">:</span> <span class="s2">"</span><span class="s">"</span><span class="pi">,</span>
+            <span class="s2">"</span><span class="s">AttachStdin"</span><span class="pi">:</span> <span class="nv">false</span><span class="pi">,</span>
+            <span class="s2">"</span><span class="s">AttachStdout"</span><span class="pi">:</span> <span class="nv">false</span><span class="pi">,</span>
+            <span class="s2">"</span><span class="s">AttachStderr"</span><span class="pi">:</span> <span class="nv">false</span><span class="pi">,</span>
+            <span class="s2">"</span><span class="s">ExposedPorts"</span><span class="pi">:</span> <span class="pi">{</span>
+                <span class="s2">"</span><span class="s">8080/tcp"</span><span class="pi">:</span> <span class="pi">{},</span>
+                <span class="s2">"</span><span class="s">8778/tcp"</span><span class="pi">:</span> <span class="pi">{}</span>
+            <span class="pi">},</span>
+            <span class="s2">"</span><span class="s">Tty"</span><span class="pi">:</span> <span class="nv">false</span><span class="pi">,</span>
+            <span class="s2">"</span><span class="s">OpenStdin"</span><span class="pi">:</span> <span class="nv">false</span><span class="pi">,</span>
+            <span class="s2">"</span><span class="s">StdinOnce"</span><span class="pi">:</span> <span class="nv">false</span><span class="pi">,</span>
+            <span class="s2">"</span><span class="s">Env"</span><span class="pi">:</span> <span class="pi">[</span>
+                <span class="s2">"</span><span class="s">PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/tomcat/bin"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">LANG=C.UTF-8"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">JAVA_VERSION=7u79"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">JAVA_DEBIAN_VERSION=7u79-2.5.5-1~deb8u1"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">JOLOKIA_VERSION=1.3.1"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">TOMCAT_VERSION=7.0.62"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">DEPLOY_DIR=/maven"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">CATALINA_HOME=/opt/tomcat"</span>
+            <span class="pi">],</span>
+            <span class="s2">"</span><span class="s">Cmd"</span><span class="pi">:</span> <span class="pi">[</span>
+                <span class="s2">"</span><span class="s">/bin/sh"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">-c"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">/opt/tomcat/bin/deploy-and-run.sh"</span>
+            <span class="pi">],</span>
+            <span class="s2">"</span><span class="s">Image"</span><span class="pi">:</span> <span class="s2">"</span><span class="s">bfc5f40a572ad8d95e5907efb341146879f13be8d1b224d4f6868d06a5220eb8"</span><span class="pi">,</span>
+            <span class="s2">"</span><span class="s">Volumes"</span><span class="pi">:</span> <span class="pi">{</span>
+                <span class="s2">"</span><span class="s">/opt/tomcat/logs"</span><span class="pi">:</span> <span class="pi">{},</span>
+                <span class="s2">"</span><span class="s">/opt/tomcat/temp"</span><span class="pi">:</span> <span class="pi">{},</span>
+                <span class="s2">"</span><span class="s">/opt/tomcat/work"</span><span class="pi">:</span> <span class="pi">{},</span>
+                <span class="s2">"</span><span class="s">/tmp/hsperfdata_root"</span><span class="pi">:</span> <span class="pi">{}</span>
+            <span class="pi">},</span>
+            <span class="s2">"</span><span class="s">WorkingDir"</span><span class="pi">:</span> <span class="s2">"</span><span class="s">"</span><span class="pi">,</span>
+            <span class="s2">"</span><span class="s">Entrypoint"</span><span class="pi">:</span> <span class="nv">null</span><span class="pi">,</span>
+            <span class="s2">"</span><span class="s">OnBuild"</span><span class="pi">:</span> <span class="pi">[],</span>
+            <span class="s2">"</span><span class="s">Labels"</span><span class="pi">:</span> <span class="pi">{}</span>
+        <span class="pi">},</span>
+        <span class="c1"># 시스템 환경</span>
+        <span class="s2">"</span><span class="s">Architecture"</span><span class="pi">:</span> <span class="s2">"</span><span class="s">amd64"</span><span class="pi">,</span>
+        <span class="s2">"</span><span class="s">Os"</span><span class="pi">:</span> <span class="s2">"</span><span class="s">linux"</span><span class="pi">,</span>
+        <span class="s2">"</span><span class="s">Size"</span><span class="pi">:</span> <span class="nv">601316716</span><span class="pi">,</span> <span class="c1"># 사이즈</span>
+        <span class="s2">"</span><span class="s">VirtualSize"</span><span class="pi">:</span> <span class="nv">601316716</span><span class="pi">,</span>
+
+        <span class="c1"># 파일 시스템</span>
+        <span class="s2">"</span><span class="s">GraphDriver"</span><span class="pi">:</span> <span class="pi">{</span>
+            <span class="s2">"</span><span class="s">Data"</span><span class="pi">:</span> <span class="pi">{</span>
+                <span class="c1"># 이미지의 레이어들이 결합된 디렉토리</span>
+                <span class="s2">"</span><span class="s">LowerDir"</span><span class="pi">:</span> <span class="s2">"</span><span class="s">/var/lib/docker/overlay2/5b1d172756a9bb432a5795adcd07f4ba267113cc36b93e64179cbeeaf4cd3cd9/diff:/var/lib/docker/overlay2/eb1053c0e7a7af1d4634d0268dea302ae24fa70a356642b6acf943f06c95a72a/diff:/var/lib/docker/overlay2/a92ff2b07bf02673bc38557ce5fb3f4f48154d2accf5b57ad60aa9e846bc6abb/diff:/var/lib/docker/overlay2/e0f4334e2307d5540923bbf2fdd5f3aa1975dd17021ff9bbe42d8441523c33b2/diff:/var/lib/docker/overlay2/59f29ae60fd95e121d4a4900629c5c754b539fe903737387083f9906af9d4a38/diff:/var/lib/docker/overlay2/6d6acd86fefbae16240c49671580115c36c52a8c74eabb8376a92a1d46d02b0e/diff:/var/lib/docker/overlay2/23a7670cf4cc208b821099cc4b71d1688ffc4ed7cdfbfb800e1ca4341be3aebe/diff:/var/lib/docker/overlay2/2e73e6c712d00dd93bbe6825fc6801858dc2c1cc6d721b8286a11726807a08d5/diff:/var/lib/docker/overlay2/4ffb6faab435a58d395d04461c1f2d05846b902d357c24a58527c3328e41f849/diff:/var/lib/docker/overlay2/c8f6dd522a290d1a650cb05477b457f5fecd0c1e4c17b7174f9bd1b319719a4c/diff:/var/lib/docker/overlay2/e6ee71db718c356007c09e8a337ad66ad33437482e40aadd7711d54f7cd03c53/diff:/var/lib/docker/overlay2/d0a11a2d679bdb3f8d1109c32891e0e97a7856de6359ae28ecf94881b280f180/diff:/var/lib/docker/overlay2/c7743e5eca701b72dca5e827c1d87f3e6dbd370b7cece875beb922b121120410/diff:/var/lib/docker/overlay2/6fa71864989c1aab0d61b4d71a309e177b72c02631078e9b91e8718d8a04b48b/diff:/var/lib/docker/overlay2/3a4c4cead37da9868c9836a3640907c89405d306dd224230fc44714848713a7b/diff:/var/lib/docker/overlay2/cff376b581f3d155fcd535bea140584e26fc2f8002a4b054e99ed6f60fc8b6d0/diff:/var/lib/docker/overlay2/85063c0c639cbc37cb9cda311ad2b0f87fe93bbe851a0cbdb5dbd9e923c08a7a/diff:/var/lib/docker/overlay2/6ab105c795bff10ffe16e719fc9756e6d1bd1d940e795988dd097e477db456a7/diff:/var/lib/docker/overlay2/dc1ad8b7b5eeb623c6aa7ff437c5d5028042fbc3367cb698fa181af56624cced/diff:/var/lib/docker/overlay2/a13e0088db10d65d4dc2f8f2648d36a8d75cfa76d79f2647a6e6a1f33ba3aee4/diff:/var/lib/docker/overlay2/d760465e0134997b06ee436590245a90c1bc9777af2f40901d9f1b2b982915cb/diff:/var/lib/docker/overlay2/62d8445285e1edd2b52b90e4f8ded798feefb7778da545ceb5971c7c8197adeb/diff:/var/lib/docker/overlay2/d3a36a1b9be23aa3b31058bfa41368fb6b1e26ba77084d9a4734d61e71cb396d/diff:/var/lib/docker/overlay2/b0dae961fb8e404295c0a538b7f2ae0c6ce1d9bde87416c5adf99e1fa0036e96/diff:/var/lib/docker/overlay2/fd74e100fbcf997276fc02aa7cd18ae8b0528074a9d94801de91d1d7f08aff9d/diff:/var/lib/docker/overlay2/50f79fa90d6799a7f32d19159dfef60d0d5f4fbf5f2d93773798f62101038e2f/diff"</span><span class="pi">,</span>
+                <span class="c1"># Lower + Upper = MergedDir</span>
+                <span class="s2">"</span><span class="s">MergedDir"</span><span class="pi">:</span> <span class="s2">"</span><span class="s">/var/lib/docker/overlay2/ec439f6b0f123aad9e89079d3fb9541373cdbc3ccf21cb85915c9abfc565c9e6/merged"</span><span class="pi">,</span>
+                <span class="c1"># R/W 가능한 디렉토리</span>
+                <span class="s2">"</span><span class="s">UpperDir"</span><span class="pi">:</span> <span class="s2">"</span><span class="s">/var/lib/docker/overlay2/ec439f6b0f123aad9e89079d3fb9541373cdbc3ccf21cb85915c9abfc565c9e6/diff"</span><span class="pi">,</span>
+                <span class="c1"># 통합 뷰의 원자성을 보장하기 위해 존재하는 중간 계층 </span>
+                <span class="s2">"</span><span class="s">WorkDir"</span><span class="pi">:</span> <span class="s2">"</span><span class="s">/var/lib/docker/overlay2/ec439f6b0f123aad9e89079d3fb9541373cdbc3ccf21cb85915c9abfc565c9e6/work"</span>
+            <span class="pi">},</span>
+            <span class="s2">"</span><span class="s">Name"</span><span class="pi">:</span> <span class="s2">"</span><span class="s">overlay2"</span>
+        <span class="pi">},</span>
+        <span class="s2">"</span><span class="s">RootFS"</span><span class="pi">:</span> <span class="pi">{</span>
+            <span class="s2">"</span><span class="s">Type"</span><span class="pi">:</span> <span class="s2">"</span><span class="s">layers"</span><span class="pi">,</span>
+            <span class="s2">"</span><span class="s">Layers"</span><span class="pi">:</span> <span class="pi">[</span>
+                <span class="s2">"</span><span class="s">sha256:c5cc83103be7b2981f7ebd1354f512b0d544d78f53037e3d9128054633d544b5"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">sha256:55aabb022b6a880f761cf2af299cc5d66acddd27eded631ee0f6227c415d3cc3"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">sha256:34ab461be6c671a29897523cce7b76b6e6804cd91cd54b8521edd1968f4e39c4"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">sha256:c900a3fbdb49641a807664efb96ebdab799169e276986c168d87e8ea4da82ecc"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">sha256:78b32d65e0a59660aa5178f82c3aebb16f5451a41016045145c2ab7596342d3c"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">sha256:0bab0fa4ed5aaa82dc52b0143e62c0bf8dce3fd2eccd4f4b03f723625eb17812"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">sha256:14c44f9f4a1a22f22034105ba3f8681c53f1e44a312c84065b7c8270d9a60992"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">sha256:d1a571b7eec96acf772cac2435ecf44c02b80b9cf3f8aeab6638c2305a3c2bd2"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">sha256:9e5189be98a802151447beebbe4462deabf23dc775f54e299703b64d150be324"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">sha256:936f772feac2e8e1b54ba6445d06136152a5970051cb93d3e951d96c8a820b0b"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">sha256:89607351ec2612fb58b19410d3b6cca7d211d344b3d2e9679b5af54b77006b66"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">sha256:ee3d91310d77693f3aa65fa38c08963feb9973866b0d10b97b12bf6c29907af3"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"</span><span class="pi">,</span>
+                <span class="s2">"</span><span class="s">sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"</span>
+            <span class="pi">]</span>
+        <span class="pi">},</span>
+        <span class="s2">"</span><span class="s">Metadata"</span><span class="pi">:</span> <span class="pi">{</span>
+            <span class="s2">"</span><span class="s">LastTagTime"</span><span class="pi">:</span> <span class="s2">"</span><span class="s">0001-01-01T00:00:00Z"</span>
+        <span class="pi">}</span>
+    <span class="pi">}</span>
+<span class="pi">]</span>
+</code></pre></div></div>
+
+<h3 id="이미지-삭제">이미지 삭제</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>docker rmi consol/tomcat-7.0
+</code></pre></div></div>
+
+<h2 id="컨테이너-관리">컨테이너 관리</h2>
+
+<h3 id="컨테이너-리스트-확인">컨테이너 리스트 확인</h3>
+
+<p>-a 를 붙이면 모든 컨테이너를 조회한다.</p>
+
+<p>-a 가 없으면 실행 중인 컨테이너만 조회한다.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>docker ps <span class="nt">-a</span>
+CONTAINER ID   IMAGE               COMMAND                  CREATED          STATUS          PORTS                                             NAMES
+16310137ecdb   consol/tomcat-7.0   <span class="s2">"/bin/sh -c /opt/tom…"</span>   54 minutes ago   Up 54 minutes   8778/tcp, 0.0.0.0:80-&gt;8080/tcp, :::80-&gt;8080/tcp   tc
+</code></pre></div></div>
+
+<p>실행 중인 컨테이너는 STATUS 란에 Up 이라는 문구가 표시된다.</p>
+
+<h3 id="컨테이너-생성">컨테이너 생성</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>docker create <span class="nt">-p</span> 80:8080 <span class="nt">--name</span> tc consol/tomcat-7.0 <span class="c"># consol/tomcat-7.0 이미지로 tc 라는 이름의 컨테이너 생성</span>
+</code></pre></div></div>
+
+<ul>
+  <li>-p : publish, port forward, 호스트의 80포트로부터 컨테이너의 8080 포트로 포워딩한다.</li>
+  <li>—name : 컨테이너 이름, 설정하지 않으면 랜덤하게 구성하는데 매우 난잡하므로 왠만하면 지정하는 것이 좋다.(rename 명령으로 재설정 가능)</li>
+</ul>
+
+<h3 id="컨테이너-시작">컨테이너 시작</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>docker start tc <span class="c"># tc 컨테이너를 시작</span>
+</code></pre></div></div>
+
+<h3 id="컨테이너-생성과-시작을-동시에">컨테이너 생성과 시작을 동시에</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>docker run <span class="nt">-d</span> <span class="nt">-p</span> 80:8080 <span class="nt">--name</span> tc consol/tomcat-7.0
+</code></pre></div></div>
+
+<ul>
+  <li>-d : detach, 백그라운드에서 실행</li>
+</ul>
+
+<p>컨테이너를 생성 후에는 인스턴스의 외부ip 값을 이용하여 웹브라우저에 접속하여 톰캣 서버가 구동되고 있는지 확인한다.</p>
+
+<p><img src="/assets/images/2022-06-27/11.21.11.png" alt="스크린샷 2022-06-27 오후 11.21.11.png" /></p>
+
+<p><img src="/assets/images/2022-06-27/11.22.52.png" alt="스크린샷 2022-06-27 오후 11.22.52.png" /></p>
+
+<h3 id="컨테이너-중지-및-삭제">컨테이너 중지 및 삭제</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>docker stop tc <span class="c"># 중지</span>
+docker <span class="nb">rm </span>tc <span class="c"># 삭제</span>
+</code></pre></div></div>
+
+<h3 id="로그-확인하기">로그 확인하기</h3>
+
+<p>프로세스를 실행하면서 콘솔로 출력되는 stdout, stderr 값을 출력한다.</p>
+
+<p>컨테이너가 실행되는 동안 /var/lib/docker/container/ 에 저장된다.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>docker logs tc
+</code></pre></div></div>
+
+<h3 id="컨테이너-접속">컨테이너 접속</h3>
+
+<p>tc 컨테이너에서 bash 명령을 실행하고 input(-i), tty(-t) 연결을 수행하도록 옵션을 설정한다.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>docker <span class="nb">exec</span> <span class="nt">-it</span> bash
+
+<span class="c"># 컨테이너에서 나올 때는 exit 명령을 실행한다</span>
+root@27a7aff6f9eb:/# <span class="nb">exit</span>
+</code></pre></div></div>
+
+<h3 id="컨테이너-파일-내보내기가져오기">컨테이너 파일 내보내기/가져오기</h3>
+
+<p>파일을 하나 생성하고 컨테이너에 파일을 전달한다. 그리고 그 파일을 다시 가져올수 있다.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">echo </span>test1234 <span class="o">&gt;</span> test.txt
+docker <span class="nb">cp </span>test.txt tc:/ <span class="c"># test.txt 파일을 tc 컨테이너의 root 디렉토리로 복사</span>
+docker <span class="nb">cp </span>tc:/text.txt ./test2.txt <span class="c"># tc 컨테이너에 있는 파일을 외부로 내보내기</span>
+<span class="nb">cat </span>test.txt
+</code></pre></div></div>
+
+<h2 id="연습문제">연습문제</h2>
+
+<ol>
+  <li>
+    <p>기존에 설치된 모든 컨테이너와 이미지 정지 및 삭제</p>
+
+    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code> docker ps
+ docker stop tc
+ docker <span class="nb">rm </span>tc
+ docker ps <span class="nt">-a</span> <span class="c"># 검색되는 컨테이너가 없는지 확인</span>
+</code></pre></div>    </div>
+  </li>
+  <li>
+    <p>도커 허브를 이용해 jenkins 를 검색하고 대체 이미지를 선택(jenkins/jenkins:lts)</p>
+
+    <p><img src="/assets/images/2022-06-27/11.40.53.png" alt="스크린샷 2022-06-27 오후 11.40.53.png" /></p>
+  </li>
+  <li>
+    <p>이미지를 사용해 jenkins 를 설치</p>
+
+    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code> docker pull jenkins/jenkins:lts
+ docker inspect jenkins/jenkins:lts <span class="c"># ExposedPorts 값을 이용해 8080 포트를 사용한다는 것을 확인</span>
+ docker create <span class="nt">-p</span> 80:8080 <span class="nt">--name</span> jenkins jenkins/jenkins:lts
+ docker start jenkins
+ <span class="c"># 구글클라우드 인스턴스의 외부ip 주소로 브라우저에서 접속하면 젠킨스 화면 확인</span>
+</code></pre></div>    </div>
+  </li>
+  <li>jenkins 포트로 접속하여 웹페이지 열기</li>
+  <li>
+    <p>초기 패스워드 찾아서 설치화면으로 넘어가기</p>
+
+    <p>젠킨스 웹페이지에서 어드민 초기 비밀번호를 알 수 있는 두가지 방법을 알려준다.</p>
+
+    <p><img src="/assets/images/2022-06-27/11.43.16.png" alt="스크린샷 2022-06-27 오후 11.43.16.png" /></p>
+
+    <p>첫번째로 로그를 확인하면 패스워드를 알 수 있다</p>
+
+    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code> docker logs jenkins
+</code></pre></div>    </div>
+
+    <p>두번째로 컨테이너 안의 화면에 표시된 경로의 파일로 패스워드를 알 수 있다</p>
+
+    <div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code> <span class="c"># 어드민 암호파일 경로(/var/jenkins_home/secrets/initialAdminPassword)로 이동하여 확인</span>
+ docker <span class="nb">exec</span> <span class="nt">-it</span> jenkins bash <span class="c"># 컨테이너의 bash 실행하여 내부로 이동</span>
+ <span class="nb">cat</span> /var/jenkins_home/secrets/initialAdminPassword <span class="c"># 어드민 암호 확인</span>
+    
+ <span class="c"># 또는 아래 명령으로 간단히 한번에 비밀번호를 알아낼 수도 있다</span>
+ docker <span class="nb">exec </span>jenkins <span class="nb">cat</span> /var/jenkins_home/secrets/initialAdminPassword
+</code></pre></div>    </div>
+  </li>
+</ol>]]></content><author><name>Wonjune Lee</name></author><category term="docker" /><category term="docker" /><category term="GCP" /><summary type="html"><![CDATA[도커 설치]]></summary></entry></feed>

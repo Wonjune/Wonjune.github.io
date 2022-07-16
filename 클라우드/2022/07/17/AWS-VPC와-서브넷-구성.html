@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="google-translate-customization" content="108d9124921d80c3-80e20d618ff053c8-g4f02ec6f3dba68b7-c">
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>AWS VPC와 서브넷 구성 | Wonjune’s DevNote</title>
+<meta name="generator" content="Jekyll v4.2.2">
+<meta property="og:title" content="AWS VPC와 서브넷 구성">
+<meta name="author" content="Wonjune Lee">
+<meta property="og:locale" content="en_US">
+<meta name="description" content="클라우드 연구회의 목적은 사무실 회의 예약 서비스를 만들고 이를 도커 이미지로 생성한 후에 AWS에서 쿠버네티스 클러스터를 구성하고, 고가용성과 안정성이 보장되는 서비스로 구축하는 것이다. 현재는 AWS에서 K8S 클러스터 환경이 만들어질 네트워크 구조를 설계하고 구성하는 작업을 수행하고 있다. 퍼블릭으로 오픈되는 마스터 1대와 프라이빗의 워커 2대로 구성되는 쿠버네티스 클러스터, 여기에 도커 개발용 인스턴스까지 추가하는 과정에서 배운 것들을 바탕으로 여기서는 가장 기초적인 형태를 만드는 내용만 정리해본다.">
+<meta property="og:description" content="클라우드 연구회의 목적은 사무실 회의 예약 서비스를 만들고 이를 도커 이미지로 생성한 후에 AWS에서 쿠버네티스 클러스터를 구성하고, 고가용성과 안정성이 보장되는 서비스로 구축하는 것이다. 현재는 AWS에서 K8S 클러스터 환경이 만들어질 네트워크 구조를 설계하고 구성하는 작업을 수행하고 있다. 퍼블릭으로 오픈되는 마스터 1대와 프라이빗의 워커 2대로 구성되는 쿠버네티스 클러스터, 여기에 도커 개발용 인스턴스까지 추가하는 과정에서 배운 것들을 바탕으로 여기서는 가장 기초적인 형태를 만드는 내용만 정리해본다.">
+<link rel="canonical" href="/jekyll-theme-yat/%ED%81%B4%EB%9D%BC%EC%9A%B0%EB%93%9C/2022/07/17/AWS-VPC%EC%99%80-%EC%84%9C%EB%B8%8C%EB%84%B7-%EA%B5%AC%EC%84%B1.html">
+<meta property="og:url" content="/jekyll-theme-yat/%ED%81%B4%EB%9D%BC%EC%9A%B0%EB%93%9C/2022/07/17/AWS-VPC%EC%99%80-%EC%84%9C%EB%B8%8C%EB%84%B7-%EA%B5%AC%EC%84%B1.html">
+<meta property="og:site_name" content="Wonjune’s DevNote">
+<meta property="og:type" content="article">
+<meta property="article:published_time" content="2022-07-17T00:00:00+09:00">
+<meta name="twitter:card" content="summary">
+<meta property="twitter:title" content="AWS VPC와 서브넷 구성">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Wonjune Lee"},"dateModified":"2022-07-17T00:00:00+09:00","datePublished":"2022-07-17T00:00:00+09:00","description":"클라우드 연구회의 목적은 사무실 회의 예약 서비스를 만들고 이를 도커 이미지로 생성한 후에 AWS에서 쿠버네티스 클러스터를 구성하고, 고가용성과 안정성이 보장되는 서비스로 구축하는 것이다. 현재는 AWS에서 K8S 클러스터 환경이 만들어질 네트워크 구조를 설계하고 구성하는 작업을 수행하고 있다. 퍼블릭으로 오픈되는 마스터 1대와 프라이빗의 워커 2대로 구성되는 쿠버네티스 클러스터, 여기에 도커 개발용 인스턴스까지 추가하는 과정에서 배운 것들을 바탕으로 여기서는 가장 기초적인 형태를 만드는 내용만 정리해본다.","headline":"AWS VPC와 서브넷 구성","mainEntityOfPage":{"@type":"WebPage","@id":"/jekyll-theme-yat/%ED%81%B4%EB%9D%BC%EC%9A%B0%EB%93%9C/2022/07/17/AWS-VPC%EC%99%80-%EC%84%9C%EB%B8%8C%EB%84%B7-%EA%B5%AC%EC%84%B1.html"},"url":"/jekyll-theme-yat/%ED%81%B4%EB%9D%BC%EC%9A%B0%EB%93%9C/2022/07/17/AWS-VPC%EC%99%80-%EC%84%9C%EB%B8%8C%EB%84%B7-%EA%B5%AC%EC%84%B1.html"}</script>
+<!-- End Jekyll SEO tag -->
+<link rel="shortcut icon" href="">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/typeface-noto-sans@0.0.72/index.min.css">
+  <link rel="stylesheet" href="/jekyll-theme-yat/assets/css/main.css">
+  <script src="/jekyll-theme-yat/assets/js/main.js"></script><link type="application/atom+xml" rel="alternate" href="/jekyll-theme-yat/feed.xml" title="Wonjune's DevNote">
+<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/default.min.css">
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js"></script>
+<!-- and it's easy to individually load additional languages -->
+<script charset="UTF-8" src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/languages/go.min.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script>
+// Init highlight js
+document.addEventListener('DOMContentLoaded', function(event) {
+  var els = document.querySelectorAll('pre code')
+
+  function addLangData(block) {
+    var outer = block.parentElement.parentElement.parentElement;
+    var lang = block.getAttribute('data-lang');
+    for (var i = 0; i < outer.classList.length; i++) {
+      var cls = outer.classList[i];
+      if (cls.startsWith('language-')) {
+        lang = cls;
+        break;
+      }
+    }
+    if (!lang) {
+      cls = block.getAttribute('class');
+      lang = cls ? cls.replace('hljs ', '') : '';
+    }
+    if (lang.startsWith('language-')) {
+      lang = lang.substr(9);
+    }
+    block.setAttribute('class', 'hljs ' + lang);
+    block.parentNode.setAttribute('data-lang', lang);
+  }
+
+  function addBadge(block) {
+    var enabled = ('true' || 'true').toLowerCase();
+    if (enabled == 'true') {
+      var pre = block.parentElement;
+      pre.classList.add('badge');
+    }
+  }
+
+  function handle(block) {
+    addLangData(block);
+    addBadge(block)
+    hljs.highlightBlock(block);
+  }
+
+  for (var i = 0; i < els.length; i++) {
+    var el = els[i];
+    handle(el);
+  }
+});
+</script>
+
+<style>
+  /* code language badge */
+  pre.badge::before {
+    content: attr(data-lang);
+    color: #fff;
+    background-color: #ff4e00;
+    padding: 0 .5em;
+    border-radius: 0 2px;
+    text-transform: uppercase;
+    text-align: center;
+    min-width: 32px;
+    display: inline-block;
+    position: absolute;
+    right: 0;
+  }
+
+  /* fix wrong badge display for firefox browser */
+  code > table pre::before {
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<header class="site-header " role="banner">
+
+  <div class="wrapper">
+    <div class="site-header-inner">
+<span class="site-brand"><a class="site-brand-inner" rel="author" href="/jekyll-theme-yat/">
+  <img class="site-favicon" title="Wonjune's DevNote" src="" onerror="this.style.display='none'">
+  Wonjune's DevNote
+</a>
+</span><nav class="site-nav">
+          <input type="checkbox" id="nav-trigger" class="nav-trigger">
+          <label for="nav-trigger">
+            <span class="menu-icon">
+              <svg viewbox="0 0 18 15" width="18px" height="15px">
+                <path d="M18,1.484c0,0.82-0.665,1.484-1.484,1.484H1.484C0.665,2.969,0,2.304,0,1.484l0,0C0,0.665,0.665,0,1.484,0 h15.032C17.335,0,18,0.665,18,1.484L18,1.484z M18,7.516C18,8.335,17.335,9,16.516,9H1.484C0.665,9,0,8.335,0,7.516l0,0 c0-0.82,0.665-1.484,1.484-1.484h15.032C17.335,6.031,18,6.696,18,7.516L18,7.516z M18,13.516C18,14.335,17.335,15,16.516,15H1.484 C0.665,15,0,14.335,0,13.516l0,0c0-0.82,0.665-1.483,1.484-1.483h15.032C17.335,12.031,18,12.695,18,13.516L18,13.516z"></path>
+              </svg>
+            </span>
+          </label>
+
+          <div class="trigger">
+<a class="page-link" href="/jekyll-theme-yat/about.html">ABOUT</a><a class="page-link" href="/jekyll-theme-yat/archives.html">ARCHIVES</a><a class="page-link" href="/jekyll-theme-yat/categories.html">CATEGORIES</a><a class="page-link" href="/jekyll-theme-yat/">HOME</a><a class="page-link" href="/jekyll-theme-yat/tags.html">TAGS</a>
+
+
+
+
+
+
+
+
+
+<span class="page-link">
+
+
+
+<div id="google_translate_element" style="display: none;">
+</div>
+
+<span class="ct-language">
+  <ul class="list-unstyled ct-language-dropdown">
+    
+      <li>
+        <a href="#" class="lang-select" data-lang="en">
+          
+          <img src="https://cdn.countryflags.com/thumbs/united-states-of-america/flag-400.png" title="English">
+          
+        </a>
+      </li>
+    
+      <li>
+        <a href="#" class="lang-select" data-lang="fr">
+          
+          <img src="https://cdn.countryflags.com/thumbs/france/flag-400.png" title="French">
+          
+        </a>
+      </li>
+    
+      <li>
+        <a href="#" class="lang-select" data-lang="zh-CN">
+          
+          <img src="https://cdn.countryflags.com/thumbs/china/flag-400.png" title="Chinese(Simple)">
+          
+        </a>
+      </li>
+    
+      <li>
+        <a href="#" class="lang-select" data-lang="ja">
+          
+          <img src="https://cdn.countryflags.com/thumbs/japan/flag-400.png" title="Japanese">
+          
+        </a>
+      </li>
+    
+      <li>
+        <a href="#" class="lang-select" data-lang="ko">
+          
+          <img src="https://cdn.countryflags.com/thumbs/south-korea/flag-400.png" title="Korean">
+          
+        </a>
+      </li>
+    
+      <li>
+        <a href="#" class="lang-select" data-lang="ru">
+          
+          <img src="https://cdn.countryflags.com/thumbs/russia/flag-400.png" title="Russian">
+          
+        </a>
+      </li>
+    
+  </ul>
+</span>
+
+<script type="text/javascript">
+function googleTranslateElementInit() {
+  new google.translate.TranslateElement({
+    pageLanguage: 'en',
+    autoDisplay: false,
+    layout: google.translate.TranslateElement.InlineLayout.VERTICAL
+  }, 'google_translate_element');
+
+  // Links to cross-origin destinations are unsafe
+  var gll = document.getElementsByClassName('goog-logo-link')[0];
+  if (gll) {
+    gll.setAttribute('rel', 'noopener');
+  }
+
+  function restoreLang() {
+    var iframe = document.getElementsByClassName('goog-te-banner-frame')[0];
+    if (!iframe) return;
+
+    var innerDoc = iframe.contentDocument || iframe.contentWindow.document;
+    var restore_el = innerDoc.getElementsByTagName("button");
+
+    for (var i = 0; i < restore_el.length; i++) {
+      if (restore_el[i].id.indexOf("restore") >= 0) {
+        restore_el[i].click();
+        var close_el = innerDoc.getElementsByClassName("goog-close-link");
+        close_el[0].click();
+        return;
+      }
+    }
+  }
+
+  function triggerHtmlEvent(element, eventName) {
+    var event;
+    if (document.createEvent) {
+      event = document.createEvent('HTMLEvents');
+      event.initEvent(eventName, true, true);
+      element.dispatchEvent(event);
+    } else {
+      event = document.createEventObject();
+      event.eventType = eventName;
+      element.fireEvent('on' + event.eventType, event);
+    }
+  }
+
+  var googleCombo = document.querySelector("select.goog-te-combo");
+  var langSelect = document.querySelector('.ct-language');
+  langSelect.addEventListener('click', function(event) {
+    if (!event.target) {
+      return;
+    }
+
+    var selected = document.querySelector('.ct-language .ct-language-selected');
+    if (selected) {
+      selected.classList.remove('ct-language-selected');
+    }
+
+    var target = event.target;
+    while (target && target !== langSelect ) {
+      if (target.matches('.lang-select')) {
+        break;
+      }
+      target = target.parentElement;
+    }
+
+    if (target && target.matches('.lang-select')) {
+      var lang = target.getAttribute('data-lang');
+      if (googleCombo.value == lang) {
+        restoreLang();
+      } else {
+        target.parentElement.classList.add('ct-language-selected');
+        googleCombo.value = lang;
+        triggerHtmlEvent(googleCombo, 'change');
+      }
+    }
+
+    event.preventDefault();
+  });
+}
+</script>
+
+<script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+</span>
+</div>
+        </nav>
+</div>
+  </div>
+</header>
+
+<script>
+  function initHeader() {
+    var lastScrollY = getScrollPos().y;
+    var documentElement = document.documentElement;
+
+    function storeScrollData() {
+      var y = getScrollPos().y;var scrollStatus = "";
+
+      if (y <= 0) {
+        scrollStatus = "top";
+      } else if ((window.innerHeight + y) >= document.body.offsetHeight) {
+        scrollStatus = "bottom";
+      } else {
+        var isScrollDown = (y - lastScrollY > 0) ? true : false;
+        scrollStatus = isScrollDown ? "down" : "up";
+      }
+
+      lastScrollY = y;
+      documentElement.setAttribute("data-scroll-status", scrollStatus);
+    }
+
+    window.addEventListener('scroll', function(e) {
+      storeScrollData();
+    });
+
+    storeScrollData();
+  }
+  document.addEventListener('DOMContentLoaded', initHeader);
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script>
+  function hashLocate(hashValue) {
+    hashValue = hashValue.replace(/^.*#h-/, '');
+    hashValue = decodeURIComponent(hashValue);
+    var element = document.getElementById(hashValue);
+
+    if (!element) {
+      return;
+    }
+
+    var header = document.querySelector('header.site-header');
+    var headerRect = header.getBoundingClientRect();
+    var headerTop = Math.floor(headerRect.top);
+    var headerHeight = Math.floor(headerRect.height);
+    var scrollPos = getScrollPos();
+    var offsetY = element.offsetTop - (headerTop + headerHeight + 20);
+
+    if (offsetY == scrollPos.y) {
+      return;
+    }
+
+    if (headerTop == 0  && offsetY > scrollPos.y) {
+      offsetY += headerHeight + 2;
+    } else if (headerTop < 0  && offsetY < scrollPos.y) {
+      offsetY -= headerHeight - 2;
+    }
+
+    smoothScrollTo(offsetY);
+  }
+
+  // The first event occurred
+  window.addEventListener('load', function(event) {
+    if (window.location.hash) {
+      hashLocate(window.location.hash);
+    }
+  });
+
+  // The first event occurred
+  window.addEventListener('click', function(event) {
+    if (event.target.tagName.toLowerCase() == 'a') {
+      hashLocate(event.target.getAttribute('href'));
+    }
+  });
+</script>
+<div class="theme-toggle">
+  <input type="checkbox" id="theme-switch">
+  <label for="theme-switch">
+    <div class="toggle"></div>
+    <div class="names">
+      <p class="light">Light</p>
+      <p class="dark">Dark</p>
+    </div>
+  </label>
+</div>
+
+
+
+
+<script>
+  (function() {
+    var sw = document.getElementById('theme-switch');
+    var html = document.getElementsByTagName('html')[0];
+    var nightModeOption = ('auto' || 'auto').toLowerCase();
+    var storage = nightModeOption === 'manual'
+        ? localStorage
+        : sessionStorage;
+    var themeData = loadThemeData();
+
+    function saveThemeData(data) {
+      storage.setItem('theme', JSON.stringify(data));
+    }
+
+    function loadThemeData() {
+      var data = storage.getItem('theme');
+      try {
+        data = JSON.parse(data ? data : '');
+      } catch(e) {
+        data = { nightShift: undefined, autoToggleAt: 0 };
+        saveThemeData(data);
+      }
+      return data;
+    }
+
+    function handleThemeToggle(nightShift) {
+      themeData.nightShift = nightShift;
+      saveThemeData(themeData);
+      html.dataset.theme = nightShift ? 'dark' : 'light';
+      setTimeout(function() {
+        sw.checked = nightShift ? true : false;
+      }, 50);
+    }
+
+    function autoThemeToggle() {
+      // Next time point of theme toggle
+      var now = new Date();
+      var toggleAt = new Date();
+      var hours = now.getHours();
+      var nightShift = hours >= 19 || hours <=7;
+
+      if (nightShift) {
+        if (hours > 7) {
+          toggleAt.setDate(toggleAt.getDate() + 1);
+        }
+        toggleAt.setHours(7);
+      } else {
+        toggleAt.setHours(19);
+      }
+
+      toggleAt.setMinutes(0);
+      toggleAt.setSeconds(0);
+      toggleAt.setMilliseconds(0)
+
+      var delay = toggleAt.getTime() - now.getTime();
+
+      // auto toggle theme mode
+      setTimeout(function() {
+        handleThemeToggle(!nightShift);
+      }, delay);
+
+      return {
+        nightShift: nightShift,
+        toggleAt: toggleAt.getTime()
+      };
+    }
+
+    // Listen the theme toggle event
+    sw.addEventListener('change', function(event) {
+      handleThemeToggle(event.target.checked);
+    });
+
+    if (nightModeOption == 'auto') {
+      var data = autoThemeToggle();
+
+      // Toggle theme by local setting
+      if (data.toggleAt > themeData.autoToggleAt) {
+        themeData.autoToggleAt = data.toggleAt;
+        handleThemeToggle(data.nightShift);
+      } else {
+        handleThemeToggle(themeData.nightShift);
+      }
+    } else if (nightModeOption == 'manual') {
+      handleThemeToggle(themeData.nightShift);
+    } else {
+      var nightShift = themeData.nightShift;
+      if (nightShift === undefined) {
+        nightShift = nightModeOption === 'on';
+      }
+      handleThemeToggle(nightShift);
+    }
+  })();
+</script>
+<div id="click-to-top" class="click-to-top">
+  <i class="fa fa-arrow-up"></i>
+</div>
+<script>
+  (function () {
+    const clickToTop = document.getElementById('click-to-top');
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 100) {
+        clickToTop.classList.add('show')
+      }else {
+        clickToTop.classList.remove('show')
+      }
+    });
+    clickToTop.addEventListener('click', () => {
+      window.smoothScrollTo(0);
+    });
+  })();
+</script>
+<main class="page-content" aria-label="Content">
+      <div class="wrapper">
+        <div class="framework">
+  <section class="main">
+
+     <div class="post">
+  <section>
+
+
+
+
+
+
+
+
+
+<header class="post-header">
+  <h1 class="post-title p-name" itemprop="name headline">AWS VPC와 서브넷 구성</h1>
+  <h2 class="post-subtitle">AWS 클라우드 환경에서 서비스를 구축할 때, 가장 먼저 하는 작업은 네트워크 환경을 구성하는 것이다. 회사 연구회에서 AWS 환경 구축을 담당하게 되어 수행 했던 가상 네트워크 환경 구축내용을 정리해 보았다.</h2>
+
+  <p class="post-meta">
+    <time class="dt-published" datetime="2022-07-17T00:00:00+09:00" itemprop="datePublished"><i class="fa fa-calendar"></i> Jul 17, 2022
+    </time>
+
+    
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <span class="post-reading-time left-vsplit"><i class="fa fa-clock-o"></i> About 5 mins</span>
+  </p>
+<div class="post-tags">
+<a class="post-tag" href="/jekyll-theme-yat/tags.html#AWS">#AWS</a><a class="post-tag" href="/jekyll-theme-yat/tags.html#VPC">#VPC</a><a class="post-tag" href="/jekyll-theme-yat/tags.html#Subnet">#Subnet</a><a class="post-tag" href="/jekyll-theme-yat/tags.html#EC2">#EC2</a><a class="post-tag" href="/jekyll-theme-yat/tags.html#%ED%81%B4%EB%9D%BC%EC%9A%B0%EB%93%9C">#클라우드</a>
+</div></header>
+<article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+
+    <div class="post-content e-content" itemprop="articleBody">
+
+      <p>클라우드 연구회의 목적은 사무실 회의 예약 서비스를 만들고 이를 도커 이미지로 생성한 후에 AWS에서 쿠버네티스 클러스터를 구성하고, 고가용성과 안정성이 보장되는 서비스로 구축하는 것이다. 현재는 AWS에서 K8S 클러스터 환경이 만들어질 네트워크 구조를 설계하고 구성하는 작업을 수행하고 있다. 퍼블릭으로 오픈되는 마스터 1대와 프라이빗의 워커 2대로 구성되는 쿠버네티스 클러스터, 여기에 도커 개발용 인스턴스까지 추가하는 과정에서 배운 것들을 바탕으로 여기서는 가장 기초적인 형태를 만드는 내용만 정리해본다.</p>
+
+<p>우선 전체적인 네트워크의 구성도는 아래와 같다.</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled.png" alt="Untitled"></p>
+
+<h2 id="vpc-생성">VPC 생성</h2>
+
+<p>VPC(Virtual Private Cloud)는 AWS 클라우드에서 생성되는 모든 리소스가 올라가는 바탕이 되는 가상 네트워크 공간이다. 특정 단일 리전에 종속되지만 이 리전 내의 여러 가용영역에 걸쳐서 존재할 수 있다. 최소 16비트의 사이더블록을 가진 CIDR 주소를 가진다.</p>
+
+<p>가격이 저렴하다는 이유로 오레곤 리전을 선택했는데, 실제 서비스 시에 서울 리전에 비해서 속도 이슈가 있을지는 지켜봐야 할 것 같다. 10.0.0.0/16 주소를 할당하자.</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled%201.png" alt="Untitled"></p>
+
+<h2 id="퍼블릭-서브넷-생성">퍼블릭 서브넷 생성</h2>
+
+<p>서브넷은 VPC 아래에 존재하는 논리적인 서브 네트워크이다. 최소 24비트 블록을 가지는 CIDR 주소를 가진다. VPC 가 속한 리전의 특정 가용영역(AZ)에 종속된다. 외부에서 서브넷 내부로 엑세스가 가능한가에 따라 퍼블릭 서브넷과 프라이빗 서브넷으로 분류할 수 있다.</p>
+
+<p>퍼블릭 서브넷은 라우팅 테이블에 외부 인터넷과 연결되는 인터넷 게이트웨이 연결주소가 라우트되며 구성요소(EC2 등)는 퍼블릭IP 주소(혹은 탄력적IP 주소)가 할당되어 외부에서 접속이 가능하다.</p>
+
+<p>VPC ID는 위에서 생성한 VPC 로 지정해주고 CIDR 주소는 10.0.0.0/24 로 지정한다. 가용영역은 특별히 지정해주지 않으면 자동으로 할당되지만 어떤 것으로 할당되었는지는 기억해둔다.</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled%202.png" alt="Untitled"></p>
+
+<h2 id="인터넷-게이트웨이-생성">인터넷 게이트웨이 생성</h2>
+
+<p>생성한 서브넷이 퍼블릭 서브넷으로서 기능하려면 인터넷게이트웨이를 통해 외부로 오픈되어야 한다. 인터넷게이트웨이는 VPC에 종속된다.</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled%203.png" alt="Untitled"></p>
+
+<p>게이트웨이를 생성한 후에 위에서 생성한 VPC에 연결해준다.</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled%204.png" alt="Untitled"></p>
+
+<h2 id="라우팅-테이블-생성-및-연결">라우팅 테이블 생성 및 연결</h2>
+
+<p>퍼블릭 서브넷에서 사용할 라우팅테이블을 생성하고 외부 인터넷으로 접속할 수 있도록 0.0.0.0/0 주소로 인터넷 게이트웨이를 라우팅한다.</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled%205.png" alt="Untitled"></p>
+
+<p>라우팅테이블을 public subnet 에 연결</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled%206.png" alt="Untitled"></p>
+
+<p>외부인터넷 통신이 가능하도록 디폴트 스태틱 라우팅 추가하고 인터넷 게이트웨이를 연결</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled%207.png" alt="Untitled"></p>
+
+<h2 id="퍼블릭-ec2-생성">퍼블릭 EC2 생성</h2>
+
+<p>퍼블릭 서브넷안에 EC2 인스턴스를 생성한다. 이 인스턴스가 이 후 생성될 네트워크 구성요소로 접근하기 위한 관문 역할을 수행할 것이다. VPC와 서브넷을 잘 지정해준다. ‘퍼블릭 IP 자동 할당’ 을 ‘활성화’로 해주면 퍼블릭 IP 가 할당되게 되는데, 외부로 서비스되기 위해서는 일관된 IP주소(기본으로 할당되는 퍼블릭IP는 인스턴스가 재시작되거나 하면 다른 주소로 바뀐다)를 가지는 것이 좋으므로 이후에 탄력적 IP(Elastic IP) 를 생성해서 할당할 예정이다. 따라서 여기서는 별도의 퍼블릭 IP는 할당받지 않도록 한다.</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled%208.png" alt="Untitled"></p>
+
+<h2 id="탄력적-ip-생성-후-퍼블릭-ec2-에-연결">탄력적 IP 생성 후 퍼블릭 EC2 에 연결</h2>
+
+<p>탄력적 IP(Elastic IP)를 생성 후에 퍼블릭 EC2 인스턴스에 연결해준다.</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled%209.png" alt="Untitled"></p>
+
+<h2 id="접속테스트">접속테스트</h2>
+
+<p>이제 생성한 인스턴스가 인터넷으로 잘 붙는지 확인해볼 차례이다. 우선 터미널로 SSH 접속을 한다. EC2 인스턴스 생성 시 디폴트 설정을 따랐다면 보안그룹에 22번 포트가 등록되어 있을 것이고 키페어를 할당 받았을 것이다.</p>
+
+<p>미리 생성해둔 keypair 파일에 읽기/쓰기 권한을 추가하자.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">chmod </span>600 dxgo-k8s-mrs.pem
+</code></pre></div></div>
+
+<p>OpenSSH 를 이용하여 접속한다. 탄력적IP 주소로 붙으며 인스턴스 생성시 AMI를 우분투로 지정해서 디폴트 계정은 ubuntu 이다.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ssh <span class="nt">-i</span> <span class="s2">"dxgo-k8s-mrs.pem"</span> ubuntu@52.34.103.119
+</code></pre></div></div>
+
+<p><img src="/assets/images/2022-07-17/Untitled%2010.png" alt="Untitled"></p>
+
+<p><a href="http://google.com">google.com</a> 으로 ping 을 날려보면 잘 접속되는 것을 알 수 있다. 인터넷 게이트웨이는 잘 설정되었다.</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled%2011.png" alt="Untitled"></p>
+
+<h2 id="프라이빗-서브넷-생성">프라이빗 서브넷 생성</h2>
+
+<p>프라이빗 서브넷은 외부로부터 차단된 서브넷이다. 따라서 이 서브넷 내부의 인스턴스는 외부에서 접속할 수 없고 오직 같은 VPC 내에서만 접근이 가능하다. 다만 프라이빗 서브넷의 인스턴스는 동일 VPC 내의 퍼블릭 서브넷에 구성된 NAT(Network Address Translation) 게이트웨이를 이용하면 인터넷으로 접속이 가능해진다. 이렇게 해도 여전히 외부에서 프라이빗 서브넷 내부로는 접근 할 수 없다.(외부에서 접근 할 수 있는 오픈된 IP 주소가 없기 때문) 따라서 보안이 중요한 데이터베이스나 백엔드 서버는 프라이빗 서브넷 내부에 둔다.</p>
+
+<p>서브넷의 생성은 퍼블릿 서브넷의 그것과 동일하게 수행한다. CIDR 주소는 10.0.1.0/24 로 지정한다.</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled%2012.png" alt="Untitled"></p>
+
+<h2 id="퍼블릭서브넷에-nat게이트웨이-추가">퍼블릭서브넷에 NAT게이트웨이 추가</h2>
+
+<p>프라이빗 서브넷의 인스턴스도 필요한 라이브러리나 어플리케이션을 설치할 수 있도록 인터넷으로 접속할 수 있게 해야한다. 이를 위해 퍼블릭 서브넷에 NAT 게이트웨이를 만들어준다.</p>
+
+<p>연결 유형을 퍼블릭으로 하고 탄력적 IP를 하나 할당 받는다. 이래야 프라이빗 서브넷의 인스턴스가 인터넷으로 접속할 수 있다.</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled%2013.png" alt="Untitled"></p>
+
+<p>VPC 내에 라우팅 테이블을 하나 생성하고, 프라이빗 서브넷을 연결해준다.</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled%2014.png" alt="Untitled"></p>
+
+<p>라우팅에 NAT 게이트웨이로의 디폴트 라우팅을 추가해준다.</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled%2015.png" alt="Untitled"></p>
+
+<h2 id="프라이빗-서브넷에-ec2-생성-후-테스트">프라이빗 서브넷에 EC2 생성 후 테스트</h2>
+
+<p>프라이빗 서브넷 내부에도 퍼블릭 때와 동일하게 EC2를 생성해준다. ‘퍼블릭 IP 자동 할당’ 은 서브넷 설정에 따라 ‘비활성화’로 세팅되는 것을 알 수 있다. 프라이빗 서브넷 내부의 인스턴스는 외부 인터넷에 오픈되지 않으므로 퍼블릭IP 를 가지지 않는다.</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled%2016.png" alt="Untitled"></p>
+
+<p>프라이빗 서브넷은 외부에서 접속할 수 없다고 했으므로, 서브넷을 구축한 운영자도 SSH 를 통해 접속할 수 없다. 그럼 어떻게 해야할까? 위에서 프라이빗 서브넷의 인스턴스는 동일 VPC 내부에서만 접속 할 수 있다고 했다. 그리고 퍼블릭 EC2 인스턴스를 생성하면서 관문 역할을 수행할 것이라고도 했다. 즉, 퍼블릭 EC2 인스턴스를 통해서 접근을 해야한다.</p>
+
+<p>퍼블릭 서브넷의 인스턴스로 프라이빗 서브넷의 인스턴스로 SSH 접속을 하기 위해  키페어파일을 업로드하자. 리눅스의 경우는 scp 명령으로 파일을 보낼 수 있는데, FTP를 이용해도 된다.</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled%2017.png" alt="Untitled"></p>
+
+<p>퍼블릭 EC2 로 SSH 접속 후에 다시 프라이빗 EC2 로 SSH 접속한다. 프라이빗 IP 주소로 접속하면 된다.</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled%2018.png" alt="Untitled"></p>
+
+<p>프라이빗서브넷의 EC2에서 외부 인터넷 접속이 되는지 ping 테스트를 수행한다. 이제 NAT 게이트웨이 설정도 잘 된 것을 알 수 있다.</p>
+
+<p><img src="/assets/images/2022-07-17/Untitled%2019.png" alt="Untitled"></p>
+
+<h2 id="정리">정리</h2>
+
+<p>여기까지가 아주 기본적인 VPC 네트워크 구성 형태이다. 여기서 고가용성을 위해 다른 가용영역에 퍼블릭 또는 프라이빗 서브넷을 추가로 생성할 수도 있다.(앞에서 가용영역을 잘 기억해놓으라는 것이 이런 이유) 이런 경우에 로드밸런서나 오토 스케일링이 추가되어 트래픽을 분산시킬 수 있다. 이러한 내용들은 나중에 다시 정리해보기로 하겠다.</p>
+
+
+    </div>
+
+</article>
+<div class="post-nav">
+<a class="previous" href="/jekyll-theme-yat/docker/2022/06/27/%EB%8F%84%EC%BB%A4-%EB%AA%85%EB%A0%B9%EC%96%B4.html" title="도커 명령어 정리">도커 명령어 정리</a><span></span>
+</div>
+<div class="post-related">
+      <div>Related Articles</div>
+      <ul>
+        <li><a class="post-link" href="/jekyll-theme-yat/%ED%81%B4%EB%9D%BC%EC%9A%B0%EB%93%9C/2022/07/17/AWS-VPC%EC%99%80-%EC%84%9C%EB%B8%8C%EB%84%B7-%EA%B5%AC%EC%84%B1.html" title="">AWS VPC와 서브넷 구성</a></li>
+<li><a class="post-link" href="/jekyll-theme-yat/docker/2022/06/27/%EB%8F%84%EC%BB%A4-%EB%AA%85%EB%A0%B9%EC%96%B4.html" title="">도커 명령어 정리</a></li>
+</ul>
+    </div>
+<div class="post-comments"></div></section>
+</div>
+
+
+  </section>
+  <section class="sidebar" style="margin-left: 15px;">
+    <!-- Get sidebar items --><style type="text/css" media="screen">
+.post-menu ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+</style>
+
+<div class="post-menu">
+  <div class="post-menu-title">TOC</div>
+  <div class="post-menu-content"></div>
+</div>
+
+<script>
+  function generateContent() {
+    var menu = document.querySelector(".post-menu");
+    var menuContent =  menu.querySelector(".post-menu-content");
+    var headings = document.querySelector(".post-content").querySelectorAll("h2, h3, h4, h5, h6");
+
+    // Hide menu when no headings
+    if (headings.length === 0) {
+      return menu.style.display = "none";
+    }
+
+    // Generate post menu
+    var menuHTML = '';
+    for (var i = 0; i < headings.length; i++) {
+      var h = headings[i];
+      menuHTML += (
+        '<li class="h-' + h.tagName.toLowerCase() + '">'
+        + '<a href="#h-' + h.getAttribute('id') + '">' + h.textContent + '</a></li>');
+    }
+
+    menuContent.innerHTML = '<ul>' + menuHTML + '</ul>';
+
+    // The header element
+    var header = document.querySelector('header.site-header');
+
+    function doMenuCollapse(index, over_items) {
+      var items = menuContent.firstChild.children;
+
+      if (over_items == undefined) {
+        over_items = 20;
+      }
+
+      if (items.length < over_items) {
+        return;
+      }
+
+      var activeItem = items[index];
+      var beginItem = activeItem
+      var endItem = activeItem
+      var beginIndex = index;
+      var endIndex = index + 1;
+      while (beginIndex >= 0
+        && !items[beginIndex].classList.contains('h-h2')) {
+        beginIndex -= 1;
+      }
+      while (endIndex < items.length
+        && !items[endIndex].classList.contains('h-h2')) {
+        endIndex += 1;
+      }
+      for (var i = 0; i < beginIndex; i++) {
+        item = items[i]
+        if (!item.classList.contains('h-h2')) {
+          item.style.display = 'none';
+        }
+      }
+      for (var i = beginIndex + 1; i < endIndex; i++) {
+        item = items[i]
+        // if (!item.classList.contains('h-h2')) {
+          item.style.display = '';
+        // }
+      }
+      for (var i = endIndex; i < items.length; i++) {
+        item = items[i]
+        if (!item.classList.contains('h-h2')) {
+          item.style.display = 'none';
+        }
+      }
+    }
+
+    // Init menu collapsed
+    doMenuCollapse(-1);
+
+    // Active the menu item
+    window.addEventListener('scroll', function (event) {
+      var lastActive = menuContent.querySelector('.active');
+      var changed = true;
+      var activeIndex = -1;
+      for (var i = headings.length - 1; i >= 0; i--) {
+        var h = headings[i];
+        var headingRect = h.getBoundingClientRect();
+        var headerRect = header.getBoundingClientRect();
+        var headerTop = Math.floor(headerRect.top);
+        var headerHeight = Math.floor(headerRect.height);
+        var headerHeight = headerTop + headerHeight + 20;
+        if (headingRect.top <= headerHeight) {
+          var id = 'h-' + h.getAttribute('id');
+          var a = menuContent.querySelector('a[href="#' + id  + '"]');
+          var curActive = a.parentNode;
+          if (curActive) {
+            curActive.classList.add('active');
+            activeIndex = i;
+          }
+          if (lastActive == curActive) {
+            changed = false;
+          }
+          break;
+        }
+      }
+      if (changed) {
+        if (lastActive) {
+          lastActive.classList.remove('active');
+        }
+        doMenuCollapse(activeIndex);
+      }
+      event.preventDefault();
+    });
+  }
+  generateContent();
+</script>
+</section>
+</div>
+
+      </div>
+    </main><footer class="site-footer h-card">
+  <data class="u-url" href="/jekyll-theme-yat/"></data>
+
+  <div class="wrapper">
+    <div class="site-footer-inner">
+<div>Private documents of my developments <span class="copyleft">©</span> 2022-2022 Wonjune Lee</div>
+      <div>Powered by <a title="Jekyll is a simple, blog-aware, static site
+      generator." href="https://jekyllrb.com/">Jekyll</a> &amp; <a title="Yat, yet
+      another theme." href="https://github.com/jeffreytse/jekyll-theme-yat">Yat Theme</a>.</div>
+      <div class="footer-col rss-subscribe">Subscribe <a href="/jekyll-theme-yat/feed.xml">via RSS</a>
+</div>
+    </div>
+  </div>
+</footer>
+</body>
+</html>
